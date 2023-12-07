@@ -9,9 +9,11 @@ use stm32f1xx_hal::{
     prelude::*,
     pac::{self},
     timer::{Channel, Tim2NoRemap},
-    adc
+    adc, gpio::{Analog, gpiob::PB0}
 };
 use rtt_target::{rtt_init_print, rprintln};
+
+// type AnalogPinType = PB0<Analog>;
 
 #[entry]
 fn main() -> ! {
@@ -173,12 +175,13 @@ fn main() -> ! {
         // rprintln!("analog data: {}", data);
         // delay.delay_ms(1000_u16);
         // pwm_channel.set_duty(max as f32 * convert_to_float(adc1.read(&mut analog_pin).unwrap()));
-        let data: u16 = adc1.read(&mut analog_pin).unwrap();
+        // let data: u16 = adc1.read(&mut analog_pin).unwrap();
+        let data = read_analog_input(&mut adc1, &mut analog_pin);
         let pwm_value = map(data as i32, 0, 4096, 0, max_duty as i32);
         pwm_servo_channel.set_duty(pwm_value as u16);
         pwm_led_channel.set_duty(pwm_value as u16);
         rprintln!("PWM value: {}, analog value: {}", pwm_value, data);
-        delay.delay_ms(10_u16);
+        // delay.delay_ms(10_u16);
 
         
     }
@@ -189,4 +192,18 @@ fn map(input: i32, in_min: i32, in_max: i32, out_min: i32, out_max: i32) -> i32 
     // https://www.arduino.cc/reference/en/language/functions/math/map/
     
     return (input - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+fn read_analog_input(adc: &mut adc::Adc<pac::ADC1>, pin: &mut PB0<Analog>) -> u16 {
+    let mut buffer = [0, 100];
+    for i in 0..buffer.len() {
+        buffer[i] = adc.read(pin).unwrap();
+    }
+    let mut sum = 0;
+    for i in 0..buffer.len() {
+        sum += buffer[i];
+    }
+    
+    return sum / buffer.len() as u16;
 }
